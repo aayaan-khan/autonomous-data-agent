@@ -1,0 +1,5 @@
+user_id,signup_date,age,revenue,country
+USR001,2026-01-01,28,150.00,US
+USR002,2026-01-02,,45.50,UK
+USR003,missing_date,34,invalid_str,IN
+USR004,2026-01-03,40,300.20,
