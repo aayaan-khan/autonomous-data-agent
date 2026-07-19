@@ -1,11 +1,10 @@
 import os
+import json
 import requests
 
-# 1. Path to your local dirty dataset
 CSV_PATH = "test_dirty_data.csv"
-
-# 2. YOUR N8N WEBHOOK URL
-# Replace this with the live Webhook URL from your n8n canvas
+OUTPUT_PATH = "clean_data.json"
+# Your active n8n test webhook URL
 WEBHOOK_URL = "https://khanaayaan422.app.n8n.cloud/webhook-test/data-input" 
 
 def send_data_to_agent():
@@ -17,7 +16,6 @@ def send_data_to_agent():
     with open(CSV_PATH, "r") as file:
         raw_csv_data = file.read()
 
-    # Package the raw text content exactly how your AI Agent expects it
     payload = {
         "body": {
             "data": raw_csv_data
@@ -29,9 +27,38 @@ def send_data_to_agent():
         response = requests.post(WEBHOOK_URL, json=payload)
         
         if response.status_code == 200:
-            print(" Success! The AI Agent has received the data and is processing it.")
-            print("\n Agent Response Response:")
-            print(response.text)
+            print("AI Agent successfully processed the data.")
+            
+            # Parse the agent response
+            try:
+                response_data = response.json()
+                
+                # If n8n nests the agent output inside an object, extract it
+                if isinstance(response_data, list) and len(response_data) > 0:
+                    agent_output = response_data[0].get("output", response_data[0])
+                elif isinstance(response_data, dict):
+                    agent_output = response_data.get("output", response_data)
+                else:
+                    agent_output = response_data
+
+                # If the agent output is stringified JSON, clean and parse it
+                if isinstance(agent_output, str):
+                    # Strip out accidental markdown blocks if present
+                    cleaned_str = agent_output.strip().replace("```json", "").replace("```", "")
+                    save_content = json.loads(cleaned_str)
+                else:
+                    save_content = agent_output
+
+                # Save to local file system
+                with open(OUTPUT_PATH, "w") as out_file:
+                    json.dump(save_content, out_file, indent=4)
+                
+                print(f" Success! Automated clean data saved locally to: {OUTPUT_PATH}")
+                
+            except json.JSONDecodeError:
+                print(" Warning: Received response, but could not parse it as clean JSON.")
+                print("Raw response text below:")
+                print(response.text)
         else:
             print(f" Sent, but received status code {response.status_code}: {response.text}")
             
